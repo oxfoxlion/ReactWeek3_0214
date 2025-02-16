@@ -82,17 +82,20 @@ useEffect(()=>{
 
     console.log(products)
 
+    // 刪除產品
+    const deleteProduct = async () => {
+        try {
+          const res = await axios.delete(`${BASE_URL}/v2/api/${API_PATH}/admin/product/-OJC_Ht159XHfehoxzQW`)
+          console.log(res);
+        }
+        catch (error) {
+          console.log(error);
+          console.log('刪除失敗')
+        }
+      }
+
     return <>
     
-    <button onClick={()=>editProduct()}>編輯產品</button>
-    
-    {products.map((item)=>(<div className="card w-25" key={item.id}>
-        <img src={item.imageUrl} className="card-img-top" alt="..."></img>
-        <div className="card-body">
-          <h5 className="card-title">{item.title}</h5>
-          <p className="card-text">{item.description}</p>
-          <p className="card-text">{item.content}</p>
-          <p className="card-text">{JSON.stringify(item.imagesUrl)}</p>
-        </div>
-      </div>))}</>
+    <button onClick={()=>deleteProduct()}>刪除產品</button>
+    </>
 };

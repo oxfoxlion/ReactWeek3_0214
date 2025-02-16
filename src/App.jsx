@@ -5,7 +5,7 @@ import { Modal } from 'bootstrap';
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const API_PATH = import.meta.env.VITE_API_PATH;
 
-const defaultModalState = {
+const defaultModalState = { //設定新增產品Modal內的初始資料
   imageUrl: "",
   title: "",
   category: "",
@@ -19,15 +19,16 @@ const defaultModalState = {
 };
 
 function App() {
-  const [isAuth, setIsAuth] = useState(false);
-  const [products, setProducts] = useState([]);
-  const [tempProduct, setTempProduct] = useState(defaultModalState); //當前的產品資訊
-  const [account, setAccount] = useState({
+  const [isAuth, setIsAuth] = useState(false); //紀錄登入狀態
+  const [products, setProducts] = useState([]); //紀錄從API中取得的產品列表
+  const [tempProduct, setTempProduct] = useState(defaultModalState); //紀錄準備要送出的產品資訊
+  const [account, setAccount] = useState({ //記錄使用者輸入的帳號密碼
     username: "example@test.com",
     password: "example",
   });
 
-  const handleInputChange = (e) => {
+  // 記錄使用者輸入的帳號密碼，當Input的value改變時就改寫account
+  const handleInputChange = (e) => { 
     const { value, name } = e.target;
 
     setAccount({
@@ -36,6 +37,7 @@ function App() {
     });
   };
 
+  // 取得產品列表API
   const getProducts = async () => {
     try {
       const res = await axios.get(
@@ -47,8 +49,9 @@ function App() {
     }
   };
 
+  // 登入API
   const handleLogin = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); 
 
     try {
       const res = await axios.post(`${BASE_URL}/v2/admin/signin`, account);
@@ -59,30 +62,35 @@ function App() {
 
       axios.defaults.headers.common["Authorization"] = token;
 
+      checkUserLogin();
+
     } catch (error) {
       alert("登入失敗");
     }
   };
 
+  // 確認登入狀態API
   const checkUserLogin = async () => {
     try {
       await axios.post(`${BASE_URL}/v2/api/user/check`);
       alert("使用者已登入");
       setIsAuth(true);
       getProducts();
+
     } catch (error) {
-      console.error(error);
+      console.log('驗證失敗');
     }
   };
 
-  useEffect(() => {
-    const token = document.cookie.replace(
-      /(?:(?:^|.*;\s*)shaoToken\s*\=\s*([^;]*).*$)|^.*$/,
-      "$1",
-    );
-    axios.defaults.headers.common["Authorization"] = token;
-    checkUserLogin();
-  }, [])
+  // 這段是開發的時候便於使用所寫的
+  // useEffect(() => {
+  //   const token = document.cookie.replace(
+  //     /(?:(?:^|.*;\s*)shaoToken\s*\=\s*([^;]*).*$)|^.*$/,
+  //     "$1",
+  //   );
+  //   axios.defaults.headers.common["Authorization"] = token;
+  //   checkUserLogin();
+  // }, [])
 
   // create Product Modal
   const createProductModal = useRef(null);
@@ -97,7 +105,7 @@ function App() {
   const openCreateProductModal = () => {
 
 
-    setTempProduct(defaultModalState);
+    setTempProduct(defaultModalState); //當Modal打開時自動將tempProduct設定為預設值
 
     const modalInstance = Modal.getInstance(createProductModal.current);
     modalInstance.show();
@@ -139,7 +147,7 @@ function App() {
 
   // 打開Modal
   const openEditProductModal = (product) => {
-    setTempProduct(product)
+    setTempProduct(product) //當modal打開時將tempProduct設為選中的這個product
 
     const modalInstance = Modal.getInstance(editProductModal.current);
     modalInstance.show();
@@ -169,9 +177,96 @@ function App() {
     })
   }
 
-  // 測試用，記得刪掉
-  console.log(tempProduct)
-  console.log(products)
+  // 新增產品API
+
+  const createProduct = async () => {
+    try {
+
+      const res = await axios.post(`${BASE_URL}/v2/api/${API_PATH}/admin/product`, {
+        data: {
+          ...tempProduct,
+          origin_price: Number(tempProduct.origin_price),
+          price: Number(tempProduct.price),
+          is_enabled: tempProduct.is_enabled ? 1 : 0
+        }
+      })
+
+      getProducts();
+
+    } catch (error) {
+      alert('新增失敗')
+    }
+  }
+
+  const handleCreateProduct = () => {
+    createProduct();
+    closeCreateProductModal();
+  }
+
+  // 編輯產品API
+
+  const editProduct = async (id) => {
+    try {
+      const res = await axios.put(`${BASE_URL}/v2/api/${API_PATH}/admin/product/${id}`, {
+        data: {
+          ...tempProduct,
+          origin_price: Number(tempProduct.origin_price),
+          price: Number(tempProduct.price),
+          is_enabled: tempProduct.is_enabled ? 1 : 0
+        }
+      })
+
+      getProducts();
+    }
+    catch (error) {
+      console.log('編輯失敗')
+    }
+  }
+
+  const handleEditProduct = (id) => {
+    editProduct(id);
+    closeEditProductModal();
+  }
+
+  // 刪除產品
+  const deleteProductModal = useRef(null);
+
+  useEffect(() => {
+    new Modal(deleteProductModal.current, {
+      backdrop: false //防止點擊背景時關閉Modal
+    });
+
+  }, [])
+
+  // 打開Modal
+  const openDeleteProductModal = (product) => {
+    setTempProduct(product)
+
+    const modalInstance = Modal.getInstance(deleteProductModal.current);
+    modalInstance.show();
+  }
+  // 關閉Modal
+  const closeDeleteProductModal = () => {
+    const modalInstance = Modal.getInstance(deleteProductModal.current);
+    modalInstance.hide();
+  }
+
+  // 刪除產品
+
+  const deleteProduct = async (id) => {
+    try {
+      const res = await axios.delete(`${BASE_URL}/v2/api/${API_PATH}/admin/product/${id}`)
+      getProducts();
+    }
+    catch (error) {
+      console.log('刪除失敗')
+    }
+  }
+
+  const handleDeleteProduct = (id) => {
+    deleteProduct(id);
+    closeDeleteProductModal();
+  }
 
   return (
     <>
@@ -200,11 +295,11 @@ function App() {
                       <th scope="row">{product.title}</th>
                       <td>{product.origin_price}</td>
                       <td>{product.price}</td>
-                      <td>{product.is_enabled}</td>
+                      {product.is_enabled ? <td className="text-success">已啟用</td> :<td className="text-danger">未啟用</td>}
                       <td>
                         <div className="btn-group">
                           <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => openEditProductModal(product)}>編輯</button>
-                          <button type="button" className="btn btn-outline-danger btn-sm">刪除</button>
+                          <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => openDeleteProductModal(product)}>刪除</button>
                         </div>
                       </td>
                     </tr>
@@ -288,7 +383,7 @@ function App() {
                     {tempProduct.imagesUrl?.map((image, index) => (
                       <div key={index} className="mb-2">
                         <label
-                          htmlFor={`edit-imagesUrl-${index + 1}`}
+                          htmlFor={`create-imagesUrl-${index + 1}`}
                           className="form-label"
                         >
                           副圖 {index + 1}
@@ -296,7 +391,7 @@ function App() {
                         <input
                           value={image}
                           onChange={(e) => handleImageUrlInputChange(e, index)}
-                          id={`edit-imagesUrl-${index + 1}`}
+                          id={`create-imagesUrl-${index + 1}`}
                           type="text"
                           placeholder={`圖片網址 ${index + 1}`}
                           className="form-control mb-2"
@@ -312,9 +407,9 @@ function App() {
                     ))}
 
                     <div className="btn-group w-100">
-                      {tempProduct.imagesUrl.length < 5 && tempProduct.imagesUrl[tempProduct.imagesUrl.length - 1] !== '' && (<button className="btn btn-outline-primary btn-sm w-100">新增圖片</button>)}
+                      {tempProduct.imagesUrl.length < 5 && tempProduct.imagesUrl[tempProduct.imagesUrl.length - 1] !== '' && (<button className="btn btn-outline-primary btn-sm w-100" onClick={handleAddImage}>新增圖片</button>)}
                       {tempProduct.imagesUrl.length > 1 && (
-                        <button className="btn btn-outline-danger btn-sm w-100">取消圖片</button>
+                        <button className="btn btn-outline-danger btn-sm w-100" onClick={handleRemoveImage}>取消圖片</button>
                       )}
                     </div>
 
@@ -449,7 +544,7 @@ function App() {
               <button type="button" className="btn btn-secondary" onClick={closeCreateProductModal}>
                 取消
               </button>
-              <button type="button" className="btn btn-primary">
+              <button type="button" className="btn btn-primary" onClick={handleCreateProduct}>
                 確認
               </button>
             </div>
@@ -594,7 +689,7 @@ function App() {
                         售價
                       </label>
                       <input
-                        value={tempProduct.value}
+                        value={tempProduct.price}
                         onChange={handleModalInputChange}
                         name="price"
                         id="edit-price"
@@ -656,8 +751,47 @@ function App() {
               <button type="button" className="btn btn-secondary" onClick={closeEditProductModal}>
                 取消
               </button>
-              <button type="button" className="btn btn-primary">
+              <button type="button" className="btn btn-primary" onClick={() => handleEditProduct(tempProduct.id)}>
                 確認
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* 刪除產品Modal */}
+      <div
+        className="modal fade"
+        id="delProductModal"
+        tabIndex="-1"
+        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        ref={deleteProductModal}
+      >
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h1 className="modal-title fs-5">刪除產品</h1>
+              <button
+                type="button"
+                className="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+                onClick={closeDeleteProductModal}
+              ></button>
+            </div>
+            <div className="modal-body">
+              你是否要刪除
+              <span className="text-danger fw-bold">{tempProduct.title}</span>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={closeDeleteProductModal}
+              >
+                取消
+              </button>
+              <button type="button" className="btn btn-danger" onClick={() => handleDeleteProduct(tempProduct.id)}>
+                刪除
               </button>
             </div>
           </div>
